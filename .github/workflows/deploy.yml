@@ -1,12 +1,12 @@
-name: Deploy Node App to ECR
+name: Node App CI/CD
 
 on:
-  workflow_dispatch:   # ✅ Run manually from Actions tab
+  workflow_dispatch:   # ✅ Run manually if needed
   push:
     branches:
-      - develop   # Auto-deploy Dev
-      - qa        # Deploy QA (with approval)
-      - main           # ✅ Auto run when code is pushed to main
+      - dev
+      - qa
+      - main
 
 jobs:
   build-and-push:
@@ -29,17 +29,36 @@ jobs:
 
       - name: Build, tag, and push image to Amazon ECR
         run: |
+          BRANCH_NAME=${GITHUB_REF##*/}
+          IMAGE_TAG=$BRANCH_NAME-${{ github.sha }}
           REPO_URI=844605843941.dkr.ecr.ap-south-1.amazonaws.com/node-test-app
-          
-          # Create two tags: latest and commit SHA
-          IMAGE_TAG_LATEST=latest
-          IMAGE_TAG_SHA=${{ github.sha }}
+          docker build -t $REPO_URI:$IMAGE_TAG .
+          docker push $REPO_URI:$IMAGE_TAG
+          echo "Image pushed: $REPO_URI:$IMAGE_TAG"
 
-          echo "Building Docker image with tags: $IMAGE_TAG_LATEST and $IMAGE_TAG_SHA"
+  deploy-dev:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/dev'
+    environment: dev
+    steps:
+      - name: Deploy to Dev
+        run: echo "Deploying to Dev environment..."
 
-          # Build image with both tags
-          docker build -t $REPO_URI:$IMAGE_TAG_LATEST -t $REPO_URI:$IMAGE_TAG_SHA .
+  deploy-qa:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/qa'
+    environment: qa
+    steps:
+      - name: Deploy to QA
+        run: echo "Deploying to QA environment..."
 
-          # Push both tags to ECR
-          docker push $REPO_URI:$IMAGE_TAG_LATEST
-          docker push $REPO_URI:$IMAGE_TAG_SHA
+  deploy-prod:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    environment: prod   # 👈 Needs approval
+    steps:
+      - name: Deploy to Prod
+        run: echo "Deploying to Production..."
