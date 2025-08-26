@@ -4,7 +4,7 @@ on:
   workflow_dispatch:   # ✅ Run manually from Actions tab
   push:
     branches:
-      - main           # ✅ Run automatically when code is pushed to main
+      - main           # ✅ Auto run when code is pushed to main
 
 jobs:
   build-and-push:
@@ -19,7 +19,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1   # change if needed
+          aws-region: ap-south-1
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -27,7 +27,17 @@ jobs:
 
       - name: Build, tag, and push image to Amazon ECR
         run: |
-          IMAGE_TAG=latest
           REPO_URI=844605843941.dkr.ecr.ap-south-1.amazonaws.com/node-test-app
-          docker build -t $REPO_URI:$IMAGE_TAG .
-          docker push $REPO_URI:$IMAGE_TAG
+          
+          # Create two tags: latest and commit SHA
+          IMAGE_TAG_LATEST=latest
+          IMAGE_TAG_SHA=${{ github.sha }}
+
+          echo "Building Docker image with tags: $IMAGE_TAG_LATEST and $IMAGE_TAG_SHA"
+
+          # Build image with both tags
+          docker build -t $REPO_URI:$IMAGE_TAG_LATEST -t $REPO_URI:$IMAGE_TAG_SHA .
+
+          # Push both tags to ECR
+          docker push $REPO_URI:$IMAGE_TAG_LATEST
+          docker push $REPO_URI:$IMAGE_TAG_SHA
