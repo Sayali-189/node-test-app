@@ -4,6 +4,8 @@ on:
   workflow_dispatch:   # ✅ Run manually from Actions tab
   push:
     branches:
+      - develop   # Auto-deploy Dev
+      - qa        # Deploy QA (with approval)
       - main           # ✅ Auto run when code is pushed to main
 
 jobs:
